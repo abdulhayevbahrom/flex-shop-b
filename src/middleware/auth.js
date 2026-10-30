@@ -3,7 +3,7 @@ import { env } from "../config/env.js";
 import { User } from "../models/User.js";
 import { AppError } from "../utils/AppError.js";
 
-function parseAndVerifyInitData(initData) {
+export function parseAndVerifyInitData(initData) {
   if (!env.telegramBotToken) {
     throw new AppError("Telegram bot token is not configured", 503, "AUTH_NOT_CONFIGURED");
   }
@@ -15,7 +15,6 @@ function parseAndVerifyInitData(initData) {
   }
 
   params.delete("hash");
-  params.delete("signature");
   const dataCheckString = [...params.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${key}=${value}`)
