@@ -145,19 +145,22 @@ export async function validatePlayer(gameId, fields) {
     template = skus.find((item) => item.extra_info?.length)?.extra_info ?? [];
   }
   const playerId = fields.player_id ?? fields.uid ?? fields.id;
-  if (env.pubgCheckApiKey && String(gameId) === "1004") {
-    const response = await fetch(`${env.pubgCheckBaseUrl}/api/v1/check`, {
-      method: "POST",
+  if (env.volseverApiKey && String(gameId) === "1004") {
+    const url = new URL("/proxy/api/game/pubg-mobile-global", env.volseverBaseUrl);
+    url.searchParams.set("id", String(playerId));
+    const response = await fetch(url, {
       signal: AbortSignal.timeout(env.lootbarTimeoutMs),
-      headers: { Accept: "application/json", "Content-Type": "application/json", "X-API-Key": env.pubgCheckApiKey },
-      body: JSON.stringify({ game: "pubg-mobile", user_id: String(playerId) }),
+      headers: { Accept: "application/json", "X-API-Key": env.volseverApiKey },
     });
     const payload = await readJson(response);
-    if (response.status === 404 || payload.status === "not_found") {
+    if (response.status === 404) {
       return { valid: false, player_name: "", region: null, login_data: { uid: playerId }, raw: payload };
     }
-    if (!response.ok || payload.status !== "success") {
+    if (!response.ok || payload.status !== true || !payload.data?.username) {
       throw new AppError(payload.message || "PUBG player check is temporarily unavailable", 503, "PLAYER_CHECK_UNAVAILABLE");
+    }
+    if (String(payload.data.user_id) !== String(playerId)) {
+      throw new AppError("PUBG checker returned a different player ID", 502, "PLAYER_CHECK_MISMATCH");
     }
     return {
       valid: true,
