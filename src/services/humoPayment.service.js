@@ -45,7 +45,7 @@ export async function processHumoNotification({
       matchedTopUp = await TopUp.findOneAndUpdate(
         {
           amountUzs: parsed.amountUzs,
-          status: "pending",
+          status: { $in: ["pending", "expired"] },
           createdAt: { $lte: telegramDate ?? new Date() },
           expiresAt: { $gt: telegramDate ?? new Date() },
         },
