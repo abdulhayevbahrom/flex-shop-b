@@ -6,7 +6,9 @@ import { getAdminJwtSecret } from "../services/adminSecurity.service.js";
 export const ADMIN_COOKIE_NAME = "admin_session";
 
 export async function adminAuth(req, _res, next) {
-  const token = req.cookies?.[ADMIN_COOKIE_NAME];
+  const authorization = req.header("Authorization") ?? "";
+  const bearerToken = authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
+  const token = bearerToken || req.cookies?.[ADMIN_COOKIE_NAME];
   if (!token) {
     return next(new AppError("Admin authorization required", 401, "ADMIN_UNAUTHORIZED"));
   }

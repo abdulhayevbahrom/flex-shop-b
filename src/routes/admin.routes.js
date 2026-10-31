@@ -3,16 +3,18 @@ import {
   listPaymentNotifications,
   updateTopUpStatus,
 } from "../controllers/admin.controller.js";
-import { getAdminSession, loginAdmin, logoutAdmin } from "../controllers/adminAuth.controller.js";
+import { getAdminSession, loginAdmin, loginAdminWithTelegram, logoutAdmin } from "../controllers/adminAuth.controller.js";
 import { createPackage, deletePackage, getProviderStatus, listPackages, listProviderPackages, updatePackage } from "../controllers/adminPackage.controller.js";
 import { getAdminOrder, getAdminStatistics, getBotStatus, listAdminOrders, updateBotStatus } from "../controllers/adminOperations.controller.js";
 import { createPaymentCard, deletePaymentCard, listPaymentCards, updatePaymentCard } from "../controllers/adminPaymentCard.controller.js";
 import { adminAuth } from "../middleware/adminAuth.js";
+import { authenticate } from "../middleware/auth.js";
 import { adminLoginRateLimit } from "../middleware/adminLoginRateLimit.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
 router.post("/auth/login", adminLoginRateLimit, asyncHandler(loginAdmin));
+router.post("/auth/telegram", authenticate, asyncHandler(loginAdminWithTelegram));
 router.use(adminAuth);
 router.get("/auth/me", getAdminSession);
 router.post("/auth/logout", logoutAdmin);

@@ -15,6 +15,13 @@ const cookieOptions = () => ({
   path: "/",
 });
 
+async function createAdminToken(admin) {
+  return jwt.sign({}, await getAdminJwtSecret(), {
+    algorithm: "HS256", subject: admin.id, issuer: "flex-shop-api",
+    audience: "flex-shop-admin", expiresIn: `${env.adminSessionHours}h`,
+  });
+}
+
 export async function loginAdmin(req, res) {
   const username = String(req.body.username ?? "").trim().toLowerCase();
   const password = String(req.body.password ?? "");
@@ -22,15 +29,22 @@ export async function loginAdmin(req, res) {
   if (!admin || !(await bcrypt.compare(password, admin.passwordHash))) {
     throw new AppError("Login yoki parol noto‘g‘ri", 401, "INVALID_CREDENTIALS");
   }
-  const token = jwt.sign({}, await getAdminJwtSecret(), {
-    algorithm: "HS256", subject: admin.id, issuer: "flex-shop-api",
-    audience: "flex-shop-admin", expiresIn: `${env.adminSessionHours}h`,
-  });
+  const token = await createAdminToken(admin);
   admin.lastLoginAt = new Date();
   await admin.save();
   req.resetAdminLoginAttempts?.();
   res.cookie(ADMIN_COOKIE_NAME, token, cookieOptions());
-  return successResponse(res, { admin: { id: admin.id, username: admin.username } });
+  return successResponse(res, { admin: { id: admin.id, username: admin.username }, token });
+}
+
+export async function loginAdminWithTelegram(req, res) {
+  const admin = await Admin.findOne({ telegramId: req.user.telegramId, isActive: true });
+  if (!admin) throw new AppError("Admin access denied", 403, "ADMIN_FORBIDDEN");
+  const token = await createAdminToken(admin);
+  admin.lastLoginAt = new Date();
+  await admin.save();
+  res.cookie(ADMIN_COOKIE_NAME, token, cookieOptions());
+  return successResponse(res, { admin: { id: admin.id, username: admin.username }, token });
 }
 
 export function logoutAdmin(_req, res) {
