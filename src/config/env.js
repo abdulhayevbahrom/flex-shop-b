@@ -48,6 +48,8 @@ export const env = Object.freeze({
   lootbarPassword: process.env.LOOTBAR_PASSWORD ?? "",
   lootbarCallbackUrl: process.env.LOOTBAR_CALLBACK_URL ?? "",
   lootbarTimeoutMs: numberFromEnv("LOOTBAR_TIMEOUT_MS", 15000),
+  pubgCheckApiKey: process.env.PUBG_CHECK_API_KEY ?? "",
+  pubgCheckBaseUrl: process.env.PUBG_CHECK_BASE_URL ?? "https://gamecheck.evogamestore.com",
   fragmentApiBaseUrl:
     process.env.FRAGMENT_API_BASE_URL ?? "https://fragment-api.uz/api/v1",
   fragmentApiKey: process.env.FRAGMENT_API_KEY ?? "",

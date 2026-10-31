@@ -145,6 +145,28 @@ export async function validatePlayer(gameId, fields) {
     template = skus.find((item) => item.extra_info?.length)?.extra_info ?? [];
   }
   const playerId = fields.player_id ?? fields.uid ?? fields.id;
+  if (env.pubgCheckApiKey && String(gameId) === "1004") {
+    const response = await fetch(`${env.pubgCheckBaseUrl}/api/v1/check`, {
+      method: "POST",
+      signal: AbortSignal.timeout(env.lootbarTimeoutMs),
+      headers: { Accept: "application/json", "Content-Type": "application/json", "X-API-Key": env.pubgCheckApiKey },
+      body: JSON.stringify({ game: "pubg-mobile", user_id: String(playerId) }),
+    });
+    const payload = await readJson(response);
+    if (response.status === 404 || payload.status === "not_found") {
+      return { valid: false, player_name: "", region: null, login_data: { uid: playerId }, raw: payload };
+    }
+    if (!response.ok || payload.status !== "success") {
+      throw new AppError(payload.message || "PUBG player check is temporarily unavailable", 503, "PLAYER_CHECK_UNAVAILABLE");
+    }
+    return {
+      valid: true,
+      player_name: payload.data?.username ?? "",
+      region: payload.data?.region ?? null,
+      login_data: { uid: playerId },
+      raw: payload,
+    };
+  }
   const loginData = { ...fields };
   delete loginData.player_id;
   if (playerId !== undefined) {
