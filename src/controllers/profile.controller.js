@@ -1,7 +1,9 @@
 import { successResponse } from "../utils/responses.js";
+import { Admin } from "../models/Admin.js";
 
-export function getProfile(req, res) {
+export async function getProfile(req, res) {
   const user = req.user.toJSON();
+  const isAdmin = Boolean(await Admin.exists({ telegramId: user.telegramId, isActive: true }));
   return successResponse(res, {
     user: {
       id: user.id,
@@ -12,6 +14,7 @@ export function getProfile(req, res) {
       photoUrl: user.photoUrl,
       languageCode: user.languageCode,
       balanceUzs: user.balanceUzs,
+      isAdmin,
     },
   });
 }
