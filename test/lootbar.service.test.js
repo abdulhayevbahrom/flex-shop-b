@@ -17,9 +17,9 @@ test("Lootbar PUBG flow reuses auth and sends verified role data", async () => {
     if (path.endsWith("/login")) {
       payload = { status: "ok", data: { token: "token-1", callback_key: "callback-secret", expire_at: Math.floor(Date.now() / 1000) + 3600 } };
     } else if (path.endsWith("/games")) {
-      payload = { status: "ok", data: { items: [{ game_id: "1002", game_name: "PUBG MOBILE", login_template: [{ name: "id", title: "Player ID", type: "text", required: true }] }], total_page: 1 } };
+      payload = { status: "ok", data: { items: [{ game_id: "1002", game_name: "PUBG MOBILE", login_template: null }], total_page: 1 } };
     } else if (path.endsWith("/skus")) {
-      payload = { status: "ok", data: { items: [{ sku_id: "10910", sku_name: "60 UC", origin_price: "0.99", reseller_price: "0.90", extra_info: [{ name: "hostid" }, { name: "roleid" }] }] } };
+      payload = { status: "ok", data: { items: [{ sku_id: "10910", sku_name: "60 UC", origin_price: "0.99", reseller_price: "0.90", extra_info: [{ name: "uid", required: true }] }] } };
     } else if (path.endsWith("/check_roles")) {
       payload = { status: "ok", data: { hostid: "global", roleid: "123456789", nickname: "PUBG Player" } };
     } else if (path.endsWith("/create_order")) {
@@ -54,9 +54,9 @@ test("Lootbar PUBG flow reuses auth and sends verified role data", async () => {
   assert.ok(protectedCalls.every((call) => call.options.headers.Authorization === "PS token-1"));
 
   const roleCall = calls.find((call) => call.path.endsWith("/check_roles"));
-  assert.deepEqual(roleCall.body, { game_id: "1002", login_data: { id: "123456789" } });
+  assert.deepEqual(roleCall.body, { game_id: "1002", login_data: { uid: "123456789" } });
   const orderCall = calls.find((call) => call.path.endsWith("/create_order"));
-  assert.deepEqual(orderCall.body.extra_info, { id: "123456789", hostid: "global", roleid: "123456789" });
+  assert.deepEqual(orderCall.body.extra_info, { uid: "123456789", hostid: "global", roleid: "123456789" });
   assert.equal(orderCall.body.callback_url, process.env.LOOTBAR_CALLBACK_URL);
 
   assert.equal(service.mapLootbarState(2), "completed");

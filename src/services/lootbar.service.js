@@ -139,7 +139,11 @@ export async function getPubgCatalog() {
 
 export async function validatePlayer(gameId, fields) {
   const game = (await allGames()).find((item) => String(item.game_id) === String(gameId));
-  const template = game?.login_template ?? [];
+  let template = game?.login_template ?? [];
+  if (!template.length) {
+    const skus = await skusForGame(gameId);
+    template = skus.find((item) => item.extra_info?.length)?.extra_info ?? [];
+  }
   const playerId = fields.player_id ?? fields.uid ?? fields.id;
   const loginData = { ...fields };
   delete loginData.player_id;
