@@ -129,10 +129,13 @@ npm run telegram:login
 ```env
 HUMO_USERBOT_ENABLED=true
 HUMO_BOT_USERNAME=HUMOcardbot
+PAYMENT_BOT_USERNAMES=HUMOcardbot,CardXabarBot
 ```
 
-Har top-up uchun backend `1..999` oralig‘idagi noyob kod qo‘shadi. Masalan,
-birinchi 13 000 UZS order aynan 13 000, keyingilari 13 001 va 13 002 bo‘ladi.
+Har top-up uchun backend band summani `HUMO_PAYMENT_AMOUNT_STEP` qadami bilan
+oshiradi. Standart qadam 100 UZS: birinchi 13 000 UZS order aynan 13 000,
+keyingilari 13 100 va 13 200 bo‘ladi. `HUMO_PAYMENT_CODE_MAX` bir vaqtda
+tekshiriladigan qo‘shimcha slotlar sonining yuqori chegarasini belgilaydi.
 HUMO kirim
 xabaridagi summa aynan aktiv top-up bilan mos kelsa, haqiqiy to‘langan summa
 foydalanuvchi balansiga yoziladi. Chiqim xabarlari e’tiborsiz qoldiriladi.

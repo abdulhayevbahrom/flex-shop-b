@@ -28,6 +28,14 @@ export const env = Object.freeze({
   humoBotUsername: (process.env.HUMO_BOT_USERNAME ?? "HUMOcardbot")
     .replace(/^@/, "")
     .toLowerCase(),
+  paymentBotUsernames: (
+    process.env.PAYMENT_BOT_USERNAMES ??
+    `${process.env.HUMO_BOT_USERNAME ?? "HUMOcardbot"},CardXabarBot`
+  )
+    .split(",")
+    .map((item) => item.trim().replace(/^@/, "").toLowerCase())
+    .filter(Boolean)
+    .filter((item, index, items) => items.indexOf(item) === index),
   humoCreditKeywords: (
     process.env.HUMO_CREDIT_KEYWORDS ??
     "tushdi,kirim,popolnen,zachislen,credited,пополнен,зачислен,поступил"
@@ -42,6 +50,7 @@ export const env = Object.freeze({
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean),
   humoPaymentCodeMax: numberFromEnv("HUMO_PAYMENT_CODE_MAX", 999),
+  humoPaymentAmountStep: numberFromEnv("HUMO_PAYMENT_AMOUNT_STEP", 100),
   lootbarBaseUrl: process.env.LOOTBAR_BASE_URL ?? "https://api.lootbar.gg",
   lootbarNickname: process.env.LOOTBAR_NICKNAME ?? "",
   lootbarEmail: process.env.LOOTBAR_EMAIL ?? "",

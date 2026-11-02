@@ -12,14 +12,15 @@ export async function allocatePaymentAmount({
   const expiresAt = new Date(Date.now() + 7 * 60 * 1000);
   const card = await selectNextPaymentCard();
 
-  for (let offset = 0; offset <= env.humoPaymentCodeMax; offset += 1) {
-    const amountUzs = requestedAmountUzs + offset;
+  for (let slot = 0; slot <= env.humoPaymentCodeMax; slot += 1) {
+    const paymentCode = slot * env.humoPaymentAmountStep;
+    const amountUzs = requestedAmountUzs + paymentCode;
     try {
       return await TopUp.create({
         user: userId,
         requestedAmountUzs,
         amountUzs,
-        paymentCode: offset,
+        paymentCode,
         activeAmountKey: String(amountUzs),
         purpose,
         order: orderId,

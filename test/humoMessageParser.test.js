@@ -29,3 +29,26 @@ test("noma'lum xabarni unknown qiladi", () => {
     text: "HUMO karta faol",
   });
 });
+
+test("CardXabarBot kirim xabaridan plus qatoridagi summani ajratadi", () => {
+  const text = `🟢 Perevod na kartu
+➕ 1 000.00 UZS
+💳 ***6246
+📍 PAYME P2P, UZ
+🕓 02.11.26 20:28
+💵 1 000.00 UZS`;
+
+  assert.deepEqual(parseHumoMessage(text, options), {
+    direction: "credit",
+    amountUzs: 1000,
+    text,
+  });
+});
+
+test("CardXabarBot ko‘rinishidagi plus qatorsiz xabarni kirim demaydi", () => {
+  assert.equal(
+    parseHumoMessage("🔴 Perevod s karty\n➖ 1 000.00 UZS", options)
+      .direction,
+    "unknown",
+  );
+});

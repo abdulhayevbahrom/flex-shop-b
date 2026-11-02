@@ -9,9 +9,15 @@ let client;
 async function processMessage(message, fallbackChatId) {
   if (!message?.message) return;
   const sender = await message.getSender().catch(() => null);
-  const username = String(sender?.username ?? (fallbackChatId ? env.humoBotUsername : "")).toLowerCase();
-  if (username !== env.humoBotUsername) return;
-  const chatId = String(message.chatId ?? message.peerId?.userId ?? fallbackChatId ?? "unknown");
+  const fallbackUsername =
+    typeof fallbackChatId === "object" ? fallbackChatId.username : "";
+  const fallbackId =
+    typeof fallbackChatId === "object" ? fallbackChatId.id : fallbackChatId;
+  const username = String(sender?.username ?? fallbackUsername).toLowerCase();
+  if (!env.paymentBotUsernames.includes(username)) return;
+  const chatId = String(
+    message.chatId ?? message.peerId?.userId ?? fallbackId ?? "unknown",
+  );
   const result = await processHumoNotification({
     telegramMessageId: `${chatId}:${message.id}`,
     telegramChatId: chatId,
@@ -53,14 +59,24 @@ export async function startHumoUserbot() {
     }
   }, new NewMessage({}));
 
-  const humoEntity = await client.getEntity(`@${env.humoBotUsername}`);
-  const recentMessages = await client.getMessages(humoEntity, { limit: 100 });
-  for (const message of [...recentMessages].reverse()) {
-    if (Number(message.date) * 1000 < Date.now() - 24 * 60 * 60 * 1000) continue;
-    await processMessage(message, humoEntity.id);
+  let syncedMessages = 0;
+  const watchedBots = [];
+  for (const username of env.paymentBotUsernames) {
+    const entity = await client.getEntity(`@${username}`);
+    watchedBots.push(`@${username}`);
+    const recentMessages = await client.getMessages(entity, { limit: 100 });
+    syncedMessages += recentMessages.length;
+    for (const message of [...recentMessages].reverse()) {
+      if (Number(message.date) * 1000 < Date.now() - 24 * 60 * 60 * 1000) {
+        continue;
+      }
+      await processMessage(message, { id: entity.id, username });
+    }
   }
 
-  console.log(`HUMO userbot connected; watching @${env.humoBotUsername}; synced ${recentMessages.length} recent messages`);
+  console.log(
+    `Payment userbot connected; watching ${watchedBots.join(", ")}; synced ${syncedMessages} recent messages`,
+  );
 }
 
 export async function stopHumoUserbot() {
