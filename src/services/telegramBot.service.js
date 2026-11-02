@@ -27,7 +27,6 @@ export function sendBotMessage(chatId, text, options = {}) {
 
 export async function configureTelegramWebhook() {
   if (!env.telegramBotToken || !env.telegramWebhookUrl || !env.telegramWebhookSecret) {
-    console.warn("Telegram webhook is not configured; /start updates will not be tracked");
     return;
   }
   try {
@@ -36,7 +35,6 @@ export async function configureTelegramWebhook() {
       secret_token: env.telegramWebhookSecret,
       allowed_updates: ["message"],
     });
-    console.log("Telegram bot webhook configured");
   } catch (error) {
     console.error("Telegram webhook configuration failed", error.message);
   }
@@ -59,8 +57,6 @@ export function broadcastBotStarted() {
   if (broadcastRunning) return false;
   broadcastRunning = true;
   void (async () => {
-    let sent = 0;
-    let failed = 0;
     try {
       const cursor = User.find({ telegramId: { $exists: true, $ne: "" } }).select("telegramId").lean().cursor();
       for await (const user of cursor) {
@@ -70,20 +66,18 @@ export function broadcastBotStarted() {
               inline_keyboard: [[{ text: "🛍 Savdo qilish", web_app: { url: env.frontendUrl.split(",")[0].trim() } }]],
             },
           });
-          sent += 1;
         } catch (error) {
           if (error.retryAfter) {
             await sleep(error.retryAfter * 1000);
-            try { await sendBotMessage(user.telegramId, "✅ Bot ishga tushdi! Endi Flex Shopʼga kirib savdo qilishingiz mumkin."); sent += 1; }
-            catch { failed += 1; }
-          } else failed += 1;
+            try { await sendBotMessage(user.telegramId, "✅ Bot ishga tushdi! Endi Flex Shopʼga kirib savdo qilishingiz mumkin."); }
+            catch {}
+          }
         }
         await sleep(40);
       }
     } catch (error) {
       console.error("Telegram broadcast failed", error);
     } finally {
-      console.log(`Telegram bot-start broadcast finished: ${sent} sent, ${failed} failed`);
       broadcastRunning = false;
     }
   })();

@@ -57,7 +57,7 @@ export async function processHumoNotification({
           },
           $unset: { activeAmountKey: 1 },
         },
-        { new: false, session },
+        { returnDocument: "before", session },
       );
 
       if (!matchedTopUp) {
@@ -82,14 +82,14 @@ export async function processHumoNotification({
               paymentAmountUzs: matchedTopUp.amountUzs,
             },
           },
-          { new: true, session },
+          { returnDocument: "after", session },
         );
         if (!paidOrder) throw new Error("Linked order is no longer awaiting payment");
       } else {
         const user = await User.findByIdAndUpdate(
           matchedTopUp.user,
           { $inc: { balanceUzs: matchedTopUp.amountUzs } },
-          { new: true, session },
+          { returnDocument: "after", session },
         );
         await Transaction.create(
           [

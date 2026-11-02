@@ -10,12 +10,12 @@ export async function selectNextPaymentCard() {
   try {
     sequence = await SystemSetting.findOneAndUpdate(
       { key: "paymentCardSequence" }, { $inc: { value: 1 } },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
     );
   } catch (error) {
     if (error?.code !== 11000) throw error;
     sequence = await SystemSetting.findOneAndUpdate(
-      { key: "paymentCardSequence" }, { $inc: { value: 1 } }, { new: true },
+      { key: "paymentCardSequence" }, { $inc: { value: 1 } }, { returnDocument: "after" },
     );
   }
   const index = (Number(sequence.value) - 1) % cards.length;
@@ -34,5 +34,4 @@ export async function ensureInitialPaymentCard() {
     holder: env.topUpCardHolder || "CARD HOLDER",
     active: true,
   });
-  console.log("Initial payment card migrated from environment");
 }

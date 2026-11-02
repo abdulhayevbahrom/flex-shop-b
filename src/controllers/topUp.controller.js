@@ -59,7 +59,7 @@ export async function getTopUp(req, res) {
     topUp = await TopUp.findOneAndUpdate(
       { _id: topUp._id, status: "pending" },
       { $set: { status: "expired" }, $unset: { activeAmountKey: 1 } },
-      { new: true },
+      { returnDocument: "after" },
     ) ?? topUp;
   }
   return successResponse(res, { topUp: output(topUp) });

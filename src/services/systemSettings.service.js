@@ -13,7 +13,7 @@ export async function setBotEnabled(enabled, adminId) {
   const setting = await SystemSetting.findOneAndUpdate(
     { key: "botEnabled" },
     { $set: { value: Boolean(enabled), updatedBy: adminId } },
-    { new: true, upsert: true, setDefaultsOnInsert: true },
+    { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
   );
   botStateCache = { enabled: Boolean(enabled), expiresAt: Date.now() + 5000 };
   return setting.value;

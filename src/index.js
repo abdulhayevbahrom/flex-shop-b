@@ -3,7 +3,6 @@ import cookieParser from "cookie-parser";
 import express from "express";
 import helmet from "helmet";
 import mongoose from "mongoose";
-import morgan from "morgan";
 import { connectDatabase, disconnectDatabase } from "./config/database.js";
 import { env, validateEnv } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -38,8 +37,6 @@ app.use(
     credentials: true,
   }),
 );
-app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
-
 // Webhook raw body imzo tekshiruvi uchun JSON parserdan oldin turishi shart. .  
 app.use("/api/webhooks", webhookRoutes);  
 app.use(express.json({ limit: "256kb" }));
@@ -85,7 +82,6 @@ async function start() {
 }
 
 async function shutdown(signal) {
-  console.log(`${signal} received, shutting down...`);
   if (server) {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -95,8 +91,8 @@ async function shutdown(signal) {
   process.exit(0);
 }
 
-process.on("SIGINT", () => shutdown("SIGINT"));
-process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 start().catch((error) => {
   console.error("Failed to start server", error);

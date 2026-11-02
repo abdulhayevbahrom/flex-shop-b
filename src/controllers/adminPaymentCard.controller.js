@@ -51,7 +51,7 @@ export async function updatePaymentCard(req, res) {
     if (!Number.isSafeInteger(order)) throw new AppError("Tartib raqami noto‘g‘ri", 400, "INVALID_SORT_ORDER");
     changes.sortOrder = order;
   }
-  const card = await PaymentCard.findByIdAndUpdate(req.params.cardId, { $set: changes }, { new: true, runValidators: true });
+  const card = await PaymentCard.findByIdAndUpdate(req.params.cardId, { $set: changes }, { returnDocument: "after", runValidators: true });
   if (!card) throw new AppError("Karta topilmadi", 404, "PAYMENT_CARD_NOT_FOUND");
   return successResponse(res, { item: output(card) });
 }

@@ -70,19 +70,23 @@ export async function authenticate(req, _res, next) {
       throw new AppError("Authentication required", 401, "UNAUTHORIZED");
     }
 
+    const userUpdates = {
+      username: telegramUser.username ?? "",
+      firstName: telegramUser.first_name ?? "",
+      lastName: telegramUser.last_name ?? "",
+      languageCode: telegramUser.language_code ?? "uz",
+      hasStartedBot: true,
+    };
+    if (typeof telegramUser.photo_url === "string" && telegramUser.photo_url.trim()) {
+      userUpdates.photoUrl = telegramUser.photo_url;
+    }
+
     const user = await User.findOneAndUpdate(
       { telegramId: String(telegramUser.id) },
       {
-        $set: {
-          username: telegramUser.username ?? "",
-          firstName: telegramUser.first_name ?? "",
-          lastName: telegramUser.last_name ?? "",
-          photoUrl: telegramUser.photo_url ?? "",
-          languageCode: telegramUser.language_code ?? "uz",
-          hasStartedBot: true,
-        },
+        $set: userUpdates,
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      { returnDocument: "after", upsert: true, setDefaultsOnInsert: true },
     );
 
     if (user.isBlocked) {

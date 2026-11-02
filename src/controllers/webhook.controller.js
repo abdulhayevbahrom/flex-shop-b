@@ -25,11 +25,11 @@ async function refundOrder(order, reason) {
   const previous = await Order.findOneAndUpdate(
     { _id: order._id, status: { $nin: ["failed", "refunded", "cancelled"] } },
     { $set: { status: "refunded", refundedAt: new Date(), failureReason: reason } },
-    { new: false },
+    { returnDocument: "before" },
   );
   if (!previous) return;
   const amount = previous.paymentAmountUzs ?? previous.chargedUzs;
-  const user = await User.findByIdAndUpdate(previous.user, { $inc: { balanceUzs: amount } }, { new: true });
+  const user = await User.findByIdAndUpdate(previous.user, { $inc: { balanceUzs: amount } }, { returnDocument: "after" });
   await Transaction.create({
     user: previous.user,
     type: "refund",

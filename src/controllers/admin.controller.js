@@ -19,7 +19,7 @@ export async function updateTopUpStatus(req, res) {
       $set: { status, completedAt: status === "completed" ? new Date() : null },
       $unset: { activeAmountKey: 1 },
     },
-    { new: false },
+    { returnDocument: "before" },
   );
   if (!topUp) {
     throw new AppError("Top-up not found or already finalized", 404, "TOPUP_NOT_PENDING");
@@ -36,7 +36,7 @@ export async function updateTopUpStatus(req, res) {
       const user = await User.findByIdAndUpdate(
         topUp.user,
         { $inc: { balanceUzs: topUp.amountUzs } },
-        { new: true },
+        { returnDocument: "after" },
       );
       await Transaction.create({
         user: topUp.user,

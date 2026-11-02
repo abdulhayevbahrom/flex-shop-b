@@ -176,7 +176,7 @@ export async function createOrder(req, res) {
   const before = await User.findOneAndUpdate(
     { _id: req.user._id, balanceUzs: { $gte: resolved.chargedUzs } },
     { $inc: { balanceUzs: -resolved.chargedUzs } },
-    { new: false },
+    { returnDocument: "before" },
   );
   if (!before) {
     throw new AppError("Insufficient balance", 402, "INSUFFICIENT_BALANCE", {
@@ -225,7 +225,7 @@ export async function createOrder(req, res) {
     const refundedUser = await User.findByIdAndUpdate(
       req.user._id,
       { $inc: { balanceUzs: resolved.chargedUzs } },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (order) {
       order.status = "failed";

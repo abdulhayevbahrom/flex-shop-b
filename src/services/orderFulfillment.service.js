@@ -30,7 +30,7 @@ export async function fulfillPaidOrder(orderId) {
   const order = await Order.findOneAndUpdate(
     { _id: orderId, status: "awaiting_payment", paidAt: { $ne: null } },
     { $set: { status: "processing" } },
-    { new: true },
+    { returnDocument: "after" },
   );
   if (!order) return null;
 
@@ -55,7 +55,7 @@ export async function fulfillPaidOrder(orderId) {
     const user = await User.findByIdAndUpdate(
       order.user,
       { $inc: { balanceUzs: refundAmount } },
-      { new: true },
+      { returnDocument: "after" },
     );
     order.status = "refunded";
     order.failureReason = error.message;

@@ -82,7 +82,7 @@ export async function updatePackage(req, res) {
     if (!Number.isSafeInteger(value)) throw new AppError("Tartib raqami noto‘g‘ri", 400, "INVALID_SORT_ORDER");
     changes.sortOrder = value;
   }
-  const item = await Package.findByIdAndUpdate(req.params.packageId, { $set: changes }, { new: true, runValidators: true });
+  const item = await Package.findByIdAndUpdate(req.params.packageId, { $set: changes }, { returnDocument: "after", runValidators: true });
   if (!item) throw new AppError("Paket topilmadi", 404, "PACKAGE_NOT_FOUND");
   return successResponse(res, { item: publicPackage(item) });
 }

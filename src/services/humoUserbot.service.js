@@ -18,25 +18,17 @@ async function processMessage(message, fallbackChatId) {
   const chatId = String(
     message.chatId ?? message.peerId?.userId ?? fallbackId ?? "unknown",
   );
-  const result = await processHumoNotification({
+  await processHumoNotification({
     telegramMessageId: `${chatId}:${message.id}`,
     telegramChatId: chatId,
     senderUsername: username,
     text: message.message,
     telegramDate: message.date ? new Date(Number(message.date) * 1000) : new Date(),
   });
-  console.log("HUMO notification processed", {
-    telegramMessageId: `${chatId}:${message.id}`,
-    matched: result.matched ?? false,
-    ignored: result.ignored ?? false,
-    unmatched: result.unmatched ?? false,
-    duplicate: result.duplicate ?? false,
-  });
 }
 
 export async function startHumoUserbot() {
   if (!env.humoUserbotEnabled) {
-    console.log("HUMO userbot is disabled");
     return;
   }
 
@@ -59,13 +51,9 @@ export async function startHumoUserbot() {
     }
   }, new NewMessage({}));
 
-  let syncedMessages = 0;
-  const watchedBots = [];
   for (const username of env.paymentBotUsernames) {
     const entity = await client.getEntity(`@${username}`);
-    watchedBots.push(`@${username}`);
     const recentMessages = await client.getMessages(entity, { limit: 100 });
-    syncedMessages += recentMessages.length;
     for (const message of [...recentMessages].reverse()) {
       if (Number(message.date) * 1000 < Date.now() - 24 * 60 * 60 * 1000) {
         continue;
@@ -74,9 +62,6 @@ export async function startHumoUserbot() {
     }
   }
 
-  console.log(
-    `Payment userbot connected; watching ${watchedBots.join(", ")}; synced ${syncedMessages} recent messages`,
-  );
 }
 
 export async function stopHumoUserbot() {
