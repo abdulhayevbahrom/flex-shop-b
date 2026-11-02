@@ -40,13 +40,14 @@ export async function configureTelegramWebhook() {
   }
 }
 
-export async function sendStartResponse(chatId, enabled) {
+export async function sendStartResponse(chatId, enabled, firstName = "") {
   if (!enabled) {
     return sendBotMessage(chatId, "🛠 Botda hozirda texnik ishlar olib borilmoqda. Iltimos, birozdan keyin qayta urinib ko‘ring.");
   }
-  return sendBotMessage(chatId, "✅ Flex Shop ishlayapti. Quyidagi tugma orqali kirib savdo qilishingiz mumkin.", {
+  const greeting = firstName.trim() ? `👋 Hurmatli ${firstName.trim()}, Flex Shopʼga xush kelibsiz!` : "👋 Flex Shopʼga xush kelibsiz!";
+  return sendBotMessage(chatId, `${greeting}\n\nKerakli mahsulotlarni toping, buyurtma bering va xaridni oson boshlang. Boshlash uchun quyidagi tugmani bosing.`, {
     reply_markup: {
-      inline_keyboard: [[{ text: "🛍 Flex Shopʼga kirish", web_app: { url: env.frontendUrl.split(",")[0].trim() } }]],
+      inline_keyboard: [[{ text: "🛍 Xaridni boshlash", web_app: { url: env.frontendUrl.split(",")[0].trim() } }]],
     },
   });
 }
