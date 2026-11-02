@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import { connectDatabase, disconnectDatabase } from "./config/database.js";
 import { env, validateEnv } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { authenticate } from "./middleware/auth.js";
 import { botAvailability } from "./middleware/botAvailability.js";
 import { notFound } from "./middleware/notFound.js";
 import apiRoutes from "./routes/index.js";
@@ -52,7 +53,7 @@ app.get("/api/health", (_req, res) =>
     timestamp: new Date().toISOString(),
   }),
 );
-app.get("/api/bot/status", async (_req, res, next) => {
+app.get("/api/bot/status", authenticate, async (_req, res, next) => {
   try {
     const enabled = await getBotEnabled();
     return successResponse(res, {

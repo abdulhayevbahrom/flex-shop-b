@@ -13,7 +13,7 @@ import { adminLoginRateLimit } from "../middleware/adminLoginRateLimit.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const router = Router();
-router.post("/auth/login", adminLoginRateLimit, asyncHandler(loginAdmin));
+router.post("/auth/login", adminLoginRateLimit, authenticate, asyncHandler(loginAdmin));
 router.post("/auth/telegram", authenticate, asyncHandler(loginAdminWithTelegram));
 router.use(adminAuth);
 router.get("/auth/me", getAdminSession);
