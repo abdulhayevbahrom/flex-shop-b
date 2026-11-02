@@ -42,7 +42,6 @@ app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 
 // Webhook raw body imzo tekshiruvi uchun JSON parserdan oldin turishi shart. .  
 app.use("/api/webhooks", webhookRoutes);  
-
 app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
