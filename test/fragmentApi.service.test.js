@@ -51,3 +51,16 @@ test("Fragment API marks network failures as unknown purchase outcomes", async (
     (error) => error.code === "FRAGMENT_NETWORK_ERROR" && error.details?.outcomeUnknown === true,
   );
 });
+
+test("Fragment API maps a missing Telegram user to a safe 404", async () => {
+  global.fetch = async () => new Response(JSON.stringify({
+    ok: false,
+    message: "Telegram foydalanuvchi topilmadi.",
+    code: "FRAGMENT_ERROR",
+  }), { status: 502 });
+  const service = await import(`../src/services/fragmentApi.service.js?notfound=${Date.now()}`);
+  await assert.rejects(
+    service.getTelegramUser("@missing_user"),
+    (error) => error.code === "TELEGRAM_USER_NOT_FOUND" && error.statusCode === 404 && !error.details?.outcomeUnknown,
+  );
+});

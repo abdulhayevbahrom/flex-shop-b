@@ -5,11 +5,13 @@ import { AppError } from "../utils/AppError.js";
 const cache = new Map();
 
 function providerError(payload, response) {
-  const code = payload?.code ?? "FRAGMENT_API_ERROR";
-  const outcomeUnknown = response.status >= 502 || ["FRAGMENT_TIMEOUT", "CRITICAL_SERVER_ERROR"].includes(code);
+  const message = payload?.message || "Fragment API request failed";
+  const notFound = /foydalanuvchi\s+topilmadi|user(?:name)?\s+not\s+found|пользователь\s+не\s+найден/i.test(message);
+  const code = notFound ? "TELEGRAM_USER_NOT_FOUND" : (payload?.code ?? "FRAGMENT_API_ERROR");
+  const outcomeUnknown = !notFound && (response.status >= 502 || ["FRAGMENT_TIMEOUT", "CRITICAL_SERVER_ERROR"].includes(code));
   return new AppError(
-    payload?.message || "Fragment API request failed",
-    response.status >= 500 ? 502 : response.status,
+    message,
+    notFound ? 404 : response.status >= 500 ? 502 : response.status,
     code,
     { providerPayload: payload, ...(outcomeUnknown ? { outcomeUnknown: true } : {}) },
   );
