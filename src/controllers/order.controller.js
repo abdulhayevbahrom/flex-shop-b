@@ -6,7 +6,6 @@ import { Package } from "../models/Package.js";
 import { allocatePaymentAmount } from "../services/paymentAmount.service.js";
 import {
   createPubgOrder,
-  getProviderOrder,
   getPubgCatalog,
   validatePlayer,
   mapLootbarState,
@@ -19,6 +18,7 @@ import {
 import { AppError } from "../utils/AppError.js";
 import { successResponse } from "../utils/responses.js";
 import { env } from "../config/env.js";
+import { syncLootbarOrderStatus } from "../services/orderStatusSync.service.js";
 
 function publicOrder(order) {
   return {
@@ -286,6 +286,7 @@ export async function listOrders(req, res) {
     Order.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
     Order.countDocuments(filter),
   ]);
+  await Promise.allSettled(items.map((order) => syncLootbarOrderStatus(order)));
   return successResponse(res, { items: items.map(publicOrder), total, page, limit });
 }
 
@@ -293,15 +294,6 @@ export async function getOrder(req, res) {
   const order = await Order.findOne({ _id: req.params.orderId, user: req.user._id });
   if (!order) throw new AppError("Order not found", 404, "ORDER_NOT_FOUND");
 
-  if (order.providerOrderId && ["created", "processing"].includes(order.status)) {
-    const provider = await getProviderOrder(order.providerReferenceId ?? order.idempotencyKey);
-    const nextStatus = provider.data?.state ? mapLootbarState(provider.data.state) : provider.order?.status;
-    if (nextStatus && nextStatus !== order.status) {
-      order.status = nextStatus;
-      order.providerPayload = provider;
-      if (nextStatus === "completed") order.completedAt = new Date();
-      await order.save();
-    }
-  }
+  await syncLootbarOrderStatus(order);
   return successResponse(res, { order: publicOrder(order) });
 }

@@ -25,6 +25,7 @@ import { ensureInitialAdmin } from "./services/adminBootstrap.service.js";
 import { getBotEnabled } from "./services/systemSettings.service.js";
 import { configureTelegramWebhook } from "./services/telegramBot.service.js";
 import { ensureInitialPaymentCard } from "./services/paymentCard.service.js";
+import { startOrderStatusSyncWorker, stopOrderStatusSyncWorker } from "./services/orderStatusSync.service.js";
 
 validateEnv();
 
@@ -76,6 +77,7 @@ async function start() {
   await ensureInitialPaymentCard();
   await configureTelegramWebhook();
   startPaymentExpiryWorker();
+  startOrderStatusSyncWorker();
   await startHumoUserbot();
   server = app.listen(env.port, () => {
     console.log(`Flex Shop API listening on http://localhost:${env.port}`);
@@ -87,6 +89,7 @@ async function shutdown(signal) {
     await new Promise((resolve) => server.close(resolve));
   }
   stopPaymentExpiryWorker();
+  stopOrderStatusSyncWorker();
   await stopHumoUserbot();
   await disconnectDatabase();
   process.exit(0);
