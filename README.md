@@ -111,6 +111,8 @@ npm run backup:database
 
 Backup papkasi `BACKUP_DIR` bilan belgilanadi. Skript eski backuplarni avtomatik
 o‘chirmaydi; backup nusxasini serverdan tashqarida ham saqlash tavsiya etiladi.
+1 CPU serverni qiynamaslik uchun backup bitta kolleksiyani ketma-ket eksport
+qiladi va `mongodump` processi past CPU prioritetida ishlaydi.
 
 ### PUBG buyurtmasi
 

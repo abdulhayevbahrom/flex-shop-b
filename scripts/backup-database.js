@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { spawn } from "node:child_process";
 import { mkdir } from "node:fs/promises";
+import { setPriority } from "node:os";
 import path from "node:path";
 
 const mongoUri = process.env.MONGO_URI;
@@ -18,7 +19,16 @@ const child = spawn("mongodump", [
   `--uri=${mongoUri}`,
   `--archive=${archivePath}`,
   "--gzip",
+  "--numParallelCollections=1",
 ], { stdio: "inherit" });
+
+if (child.pid) {
+  try {
+    setPriority(child.pid, 10);
+  } catch (error) {
+    console.warn(`Backup CPU prioritetini pasaytirib bo‘lmadi: ${error.message}`);
+  }
+}
 
 child.on("error", (error) => {
   if (error.code === "ENOENT") {
