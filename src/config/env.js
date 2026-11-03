@@ -16,6 +16,11 @@ export const env = Object.freeze({
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET ?? "",
   telegramWebhookUrl: process.env.TELEGRAM_WEBHOOK_URL ?? "",
+  adminTelegramIds: (process.env.ADMIN_TELEGRAM_IDS ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .filter((item, index, items) => items.indexOf(item) === index),
   adminSessionHours: numberFromEnv("ADMIN_SESSION_HOURS", 12),
   telegramAuthMaxAgeSeconds: numberFromEnv(
     "TELEGRAM_AUTH_MAX_AGE_SECONDS",

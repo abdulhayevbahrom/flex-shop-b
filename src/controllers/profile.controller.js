@@ -1,9 +1,11 @@
 import { successResponse } from "../utils/responses.js";
 import { Admin } from "../models/Admin.js";
+import { env } from "../config/env.js";
 
 export async function getProfile(req, res) {
   const user = req.user.toJSON();
-  const isAdmin = Boolean(await Admin.exists({ telegramId: user.telegramId, isActive: true }));
+  const isAdmin = env.adminTelegramIds.includes(String(user.telegramId))
+    || Boolean(await Admin.exists({ telegramId: user.telegramId, isActive: true }));
   return successResponse(res, {
     user: {
       id: user.id,
