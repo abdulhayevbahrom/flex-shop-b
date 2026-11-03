@@ -21,10 +21,10 @@ async function verifySignature(req, rawBody) {
   return safeEqual(signature, crypto.createHash("sha1").update(content).digest("hex"));
 }
 
-async function refundOrder(order, reason) {
+async function refundOrder(order, reason, providerPayload) {
   const previous = await Order.findOneAndUpdate(
     { _id: order._id, status: { $nin: ["failed", "refunded", "cancelled"] } },
-    { $set: { status: "refunded", refundedAt: new Date(), failureReason: reason } },
+    { $set: { status: "refunded", refundedAt: new Date(), failureReason: reason, providerPayload } },
     { returnDocument: "before" },
   );
   if (!previous) return;
@@ -79,7 +79,8 @@ export async function handleLootbarWebhook(req, res) {
     order.providerPayload = payload;
     await order.save();
   } else if (["failed", "cancelled"].includes(status)) {
-    await refundOrder(order, `Lootbar order state ${payload.state}`);
+    const reason = payload.message || payload.msg || payload.error || `Lootbar order state ${payload.state}`;
+    await refundOrder(order, reason, payload);
   } else {
     order.status = status;
     order.providerPayload = payload;

@@ -11,7 +11,7 @@ function providerError(payload, response) {
     payload?.message || "Fragment API request failed",
     response.status >= 500 ? 502 : response.status,
     code,
-    outcomeUnknown ? { outcomeUnknown: true } : undefined,
+    { providerPayload: payload, ...(outcomeUnknown ? { outcomeUnknown: true } : {}) },
   );
 }
 
@@ -19,16 +19,26 @@ async function request(path, body = {}) {
   if (!env.fragmentApiKey) {
     throw new AppError("Fragment API is not configured", 503, "FRAGMENT_NOT_CONFIGURED");
   }
-  const response = await fetch(`${env.fragmentApiBaseUrl}${path}`, {
-    method: "POST",
-    signal: AbortSignal.timeout(env.fragmentApiTimeoutMs),
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "X-API-Key": env.fragmentApiKey,
-    },
-    body: JSON.stringify(body),
-  });
+  let response;
+  try {
+    response = await fetch(`${env.fragmentApiBaseUrl}${path}`, {
+      method: "POST",
+      signal: AbortSignal.timeout(env.fragmentApiTimeoutMs),
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-API-Key": env.fragmentApiKey,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    throw new AppError(
+      error?.name === "TimeoutError" ? "Fragment API request timed out" : "Fragment API network error",
+      502,
+      error?.name === "TimeoutError" ? "FRAGMENT_TIMEOUT" : "FRAGMENT_NETWORK_ERROR",
+      { outcomeUnknown: true, cause: error?.message || String(error) },
+    );
+  }
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload.ok !== true) throw providerError(payload, response);
   return payload;

@@ -6,6 +6,19 @@ import {
   mapLootbarState,
 } from "./lootbar.service.js";
 import { createTelegramPremiumOrder } from "./fragmentApi.service.js";
+import { AppError } from "../utils/AppError.js";
+
+function failurePayload(error, providerResponse) {
+  return {
+    ...(providerResponse ? { response: providerResponse } : {}),
+    error: {
+      message: error?.message || "Provider request failed",
+      code: error?.code || "PROVIDER_ERROR",
+      statusCode: error?.statusCode || 500,
+      ...(error?.details !== undefined ? { details: error.details } : {}),
+    },
+  };
+}
 
 async function sendToProvider(order) {
   if (order.type === "pubg_uc") {
@@ -41,6 +54,14 @@ export async function fulfillPaidOrder(orderId) {
     order.providerReferenceId = providerOrder.reference_id;
     order.status = providerOrder.state ? mapLootbarState(providerOrder.state) : (providerOrder.status ?? "processing");
     order.providerPayload = provider;
+    if (["failed", "cancelled"].includes(order.status)) {
+      throw new AppError(
+        providerOrder.message || providerOrder.msg || `Provider order ${order.status}`,
+        502,
+        "PROVIDER_ORDER_FAILED",
+        { providerStatus: order.status, providerOrder },
+      );
+    }
     if (order.status === "completed") order.completedAt = new Date();
     await order.save();
     return order;
@@ -48,6 +69,7 @@ export async function fulfillPaidOrder(orderId) {
     if (error.details?.outcomeUnknown) {
       order.status = "manual_review";
       order.failureReason = error.message;
+      order.providerPayload = failurePayload(error, order.providerPayload);
       await order.save();
       return order;
     }
@@ -59,6 +81,7 @@ export async function fulfillPaidOrder(orderId) {
     );
     order.status = "refunded";
     order.failureReason = error.message;
+    order.providerPayload = failurePayload(error, order.providerPayload);
     order.refundedAt = new Date();
     await order.save();
     await Transaction.create({

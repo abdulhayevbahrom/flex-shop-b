@@ -40,3 +40,14 @@ test("Fragment API marks 502 purchase outcome as unknown", async () => {
     (error) => error.code === "FRAGMENT_TIMEOUT" && error.details?.outcomeUnknown === true,
   );
 });
+
+test("Fragment API marks network failures as unknown purchase outcomes", async () => {
+  global.fetch = async () => {
+    throw new TypeError("fetch failed");
+  };
+  const service = await import(`../src/services/fragmentApi.service.js?network=${Date.now()}`);
+  await assert.rejects(
+    service.createTelegramPremiumOrder({ username: "durov", months: 3, key: "order-3" }),
+    (error) => error.code === "FRAGMENT_NETWORK_ERROR" && error.details?.outcomeUnknown === true,
+  );
+});
