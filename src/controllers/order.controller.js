@@ -18,12 +18,15 @@ import {
 } from "../services/fragmentApi.service.js";
 import { AppError } from "../utils/AppError.js";
 import { successResponse } from "../utils/responses.js";
+import { env } from "../config/env.js";
 
 function publicOrder(order) {
   return {
     id: order.id,
     providerOrderId: order.providerOrderId,
     providerReferenceId: order.providerReferenceId,
+    provider: order.provider,
+    providerAccount: order.providerAccount,
     type: order.type,
     status: order.status,
     product: order.product,
@@ -75,6 +78,7 @@ export async function createPaymentOrder(req, res) {
     user: req.user._id,
     idempotencyKey: key,
     provider: resolved.provider,
+    providerAccount: resolved.providerAccount,
     type: req.body.type,
     status: "awaiting_payment",
     product: resolved.product,
@@ -136,6 +140,7 @@ async function resolveProduct(body) {
     }
     return {
       provider: "lootbar",
+      providerAccount: env.lootbarNickname,
       costUsd: offer.price_usd,
       chargedUzs: packageItem.retailPriceUzs,
       product: {
@@ -168,6 +173,7 @@ async function resolveProduct(body) {
     const telegramUser = await getTelegramUser(username);
     return {
       provider: "fragment",
+      providerAccount: "Fragment API wallet",
       costUsd: plan.price_usd,
       chargedUzs: packageItem.retailPriceUzs,
       product: { title: `Telegram Premium ${months} months`, months },
@@ -203,6 +209,7 @@ export async function createOrder(req, res) {
       user: req.user._id,
       idempotencyKey: key,
       provider: resolved.provider,
+      providerAccount: resolved.providerAccount,
       type: req.body.type,
       product: resolved.product,
       recipient: resolved.recipient,

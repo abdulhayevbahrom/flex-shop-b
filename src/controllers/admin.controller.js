@@ -1,5 +1,6 @@
 import { TopUp } from "../models/TopUp.js";
 import { PaymentNotification } from "../models/PaymentNotification.js";
+import { PaymentCard } from "../models/PaymentCard.js";
 import { Order } from "../models/Order.js";
 import { Transaction } from "../models/Transaction.js";
 import { User } from "../models/User.js";
@@ -26,6 +27,12 @@ export async function updateTopUpStatus(req, res) {
   }
 
   if (status === "completed") {
+    if (topUp.paymentCard) {
+      await PaymentCard.updateOne(
+        { _id: topUp.paymentCard },
+        { $inc: { usageCount: 1 } },
+      );
+    }
     if (topUp.purpose === "order" && topUp.order) {
       await Order.updateOne(
         { _id: topUp.order, status: "awaiting_payment", paidAt: null },

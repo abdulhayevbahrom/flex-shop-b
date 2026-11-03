@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { PaymentNotification } from "../models/PaymentNotification.js";
+import { PaymentCard } from "../models/PaymentCard.js";
 import { Order } from "../models/Order.js";
 import { TopUp } from "../models/TopUp.js";
 import { Transaction } from "../models/Transaction.js";
@@ -67,6 +68,14 @@ export async function processHumoNotification({
           { session },
         );
         return;
+      }
+
+      if (matchedTopUp.paymentCard) {
+        await PaymentCard.updateOne(
+          { _id: matchedTopUp.paymentCard },
+          { $inc: { usageCount: 1 } },
+          { session },
+        );
       }
 
       if (matchedTopUp.purpose === "order" && matchedTopUp.order) {

@@ -4,6 +4,7 @@ import { getBotEnabled, setBotEnabled } from "../services/systemSettings.service
 import { broadcastBotStarted } from "../services/telegramBot.service.js";
 import { AppError } from "../utils/AppError.js";
 import { successResponse } from "../utils/responses.js";
+import { env } from "../config/env.js";
 
 function monthRange(value) {
   const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(String(value ?? ""));
@@ -22,6 +23,8 @@ function orderSummary(order) {
   return {
     id: order.id, providerOrderId: order.providerOrderId,
     providerReferenceId: order.providerReferenceId, type: order.type,
+    provider: order.provider,
+    providerAccount: order.providerAccount || (order.provider === "lootbar" ? env.lootbarNickname : "Fragment API wallet"),
     status: order.status, product: order.product, recipient: order.recipient,
     costUsd: Number(order.costUsd.toString()), chargedUzs: order.chargedUzs,
     paymentAmountUzs: order.paymentAmountUzs, paidAt: order.paidAt,

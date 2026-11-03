@@ -10,6 +10,7 @@ const orderSchema = new mongoose.Schema(
     },
     idempotencyKey: { type: String, required: true, unique: true, index: true },
     provider: { type: String, enum: ["lootbar", "fragment"], default: "lootbar", required: true },
+    providerAccount: { type: String, trim: true, default: "" },
     providerOrderId: { type: String, sparse: true, index: true },
     providerReferenceId: { type: String, sparse: true, index: true },
     type: { type: String, enum: ["pubg_uc", "telegram_premium"], required: true },

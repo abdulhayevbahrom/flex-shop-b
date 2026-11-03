@@ -1,4 +1,5 @@
 import { PaymentCard } from "../models/PaymentCard.js";
+import { TopUp } from "../models/TopUp.js";
 import { AppError } from "../utils/AppError.js";
 import { successResponse } from "../utils/responses.js";
 
@@ -10,17 +11,24 @@ function normalizeNumber(value) {
   return number;
 }
 
-function output(card) {
+function output(card, usageCount = card.usageCount) {
   return {
     id: card.id, label: card.label, number: card.number, holder: card.holder,
-    active: card.active, sortOrder: card.sortOrder, usageCount: card.usageCount,
+    active: card.active, sortOrder: card.sortOrder, usageCount,
     createdAt: card.createdAt, updatedAt: card.updatedAt,
   };
 }
 
 export async function listPaymentCards(_req, res) {
   const cards = await PaymentCard.find().sort({ sortOrder: 1, createdAt: 1 });
-  return successResponse(res, { items: cards.map(output) });
+  const counts = await TopUp.aggregate([
+    { $match: { status: "completed", paymentCard: { $ne: null } } },
+    { $group: { _id: "$paymentCard", count: { $sum: 1 } } },
+  ]);
+  const countByCard = new Map(counts.map((item) => [String(item._id), item.count]));
+  return successResponse(res, {
+    items: cards.map((card) => output(card, countByCard.get(String(card._id)) ?? 0)),
+  });
 }
 
 export async function createPaymentCard(req, res) {
@@ -53,7 +61,8 @@ export async function updatePaymentCard(req, res) {
   }
   const card = await PaymentCard.findByIdAndUpdate(req.params.cardId, { $set: changes }, { returnDocument: "after", runValidators: true });
   if (!card) throw new AppError("Karta topilmadi", 404, "PAYMENT_CARD_NOT_FOUND");
-  return successResponse(res, { item: output(card) });
+  const usageCount = await TopUp.countDocuments({ paymentCard: card._id, status: "completed" });
+  return successResponse(res, { item: output(card, usageCount) });
 }
 
 export async function deletePaymentCard(req, res) {

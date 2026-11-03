@@ -19,9 +19,7 @@ export async function selectNextPaymentCard() {
     );
   }
   const index = (Number(sequence.value) - 1) % cards.length;
-  const card = cards[index];
-  await PaymentCard.updateOne({ _id: card._id }, { $inc: { usageCount: 1 } });
-  return card;
+  return cards[index];
 }
 
 export async function ensureInitialPaymentCard() {
