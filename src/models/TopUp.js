@@ -35,4 +35,6 @@ const topUpSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+topUpSchema.index({ status: 1, expiresAt: 1 });
+
 export const TopUp = mongoose.model("TopUp", topUpSchema);

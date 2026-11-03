@@ -8,6 +8,7 @@ import { env, validateEnv } from "./config/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { authenticate } from "./middleware/auth.js";
 import { botAvailability } from "./middleware/botAvailability.js";
+import { createApiRateLimit } from "./middleware/apiRateLimit.js";
 import { notFound } from "./middleware/notFound.js";
 import apiRoutes from "./routes/index.js";
 import adminRoutes from "./routes/admin.routes.js";
@@ -51,9 +52,18 @@ app.get("/api/health", (_req, res) =>
   successResponse(res, {
     service: "flex-shop-api",
     database: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    uptimeSeconds: Math.floor(process.uptime()),
+    memory: {
+      rssMb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+      heapUsedMb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+    },
     timestamp: new Date().toISOString(),
   }),
 );
+app.use("/api", createApiRateLimit({
+  windowMs: env.apiRateLimitWindowMs,
+  maxRequests: env.apiRateLimitMaxRequests,
+}));
 app.get("/api/bot/status", authenticate, async (_req, res, next) => {
   try {
     const enabled = await getBotEnabled();

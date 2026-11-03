@@ -26,6 +26,9 @@ export const env = Object.freeze({
     "TELEGRAM_AUTH_MAX_AGE_SECONDS",
     86400,
   ),
+  apiRateLimitWindowMs: numberFromEnv("API_RATE_LIMIT_WINDOW_MS", 60_000),
+  apiRateLimitMaxRequests: numberFromEnv("API_RATE_LIMIT_MAX_REQUESTS", 1200),
+  userRateLimitMaxRequests: numberFromEnv("USER_RATE_LIMIT_MAX_REQUESTS", 180),
   humoUserbotEnabled: process.env.HUMO_USERBOT_ENABLED === "true",
   telegramApiId: numberFromEnv("TELEGRAM_API_ID", 0),
   telegramApiHash: process.env.TELEGRAM_API_HASH ?? "",
@@ -77,6 +80,15 @@ export const env = Object.freeze({
 
 export function validateEnv() {
   const missing = [];
+  if (env.apiRateLimitWindowMs <= 0) {
+    throw new Error("API_RATE_LIMIT_WINDOW_MS must be greater than 0");
+  }
+  if (env.apiRateLimitMaxRequests < 0) {
+    throw new Error("API_RATE_LIMIT_MAX_REQUESTS must be 0 or greater");
+  }
+  if (env.userRateLimitMaxRequests < 0) {
+    throw new Error("USER_RATE_LIMIT_MAX_REQUESTS must be 0 or greater");
+  }
   if (!env.mongoUri) missing.push("MONGO_URI");
   if (env.nodeEnv === "production" && !env.telegramBotToken) {
     missing.push("TELEGRAM_BOT_TOKEN");

@@ -10,6 +10,16 @@ npm install
 npm run dev
 ```
 
+Productionda PM2 bitta processda ishlashi kerak. Fon workerlari sababli hozircha
+`cluster` rejimini yoqmang:
+
+```bash
+pm2 startOrReload ecosystem.config.cjs --update-env
+pm2 save
+```
+
+Konfiguratsiya process 450 MB xotiradan oshsa uni xavfsiz qayta ishga tushiradi.
+
 `.env` ichida kamida `MONGO_URI` ni kiriting. Productionda quyidagilar ham majburiy:
 
 - `TELEGRAM_BOT_TOKEN`
@@ -75,6 +85,32 @@ Bu fallback `NODE_ENV=production` bo‘lganda ishlamaydi.
 | GET | `/api/admin/provider` | Lootbar ulanishi, balans va katalog holati |
 | PATCH | `/api/admin/top-ups/:id` | Manual to‘lovni tasdiqlash/rad etish |
 | GET | `/api/admin/payment-notifications` | HUMO matching natijalari |
+
+## Rate limit, monitoring va backup
+
+Oddiy `/api` so‘rovlari IP bo‘yicha daqiqasiga 1200 ta, autentifikatsiyadan
+o‘tgan har bir Telegram foydalanuvchisi esa daqiqasiga 180 ta so‘rov bilan
+cheklanadi. Yuqori IP limiti mobil operatorlarning umumiy IP (CGNAT) ishlatishi
+sabab qonuniy foydalanuvchilar bloklanmasligi uchun tanlangan. Telegram va
+Lootbar webhooklari hamda `/api/health` limitdan tashqarida. Qiymatlarni `.env`
+orqali boshqarish mumkin:
+
+```env
+API_RATE_LIMIT_WINDOW_MS=60000
+API_RATE_LIMIT_MAX_REQUESTS=1200
+USER_RATE_LIMIT_MAX_REQUESTS=180
+```
+
+`/api/health` database holati, process uptime va Node.js xotira sarfini qaytaradi.
+
+Serverda `mongodump` mavjud bo‘lsa, siqilgan va timestamp qo‘yilgan backup yaratish:
+
+```bash
+npm run backup:database
+```
+
+Backup papkasi `BACKUP_DIR` bilan belgilanadi. Skript eski backuplarni avtomatik
+o‘chirmaydi; backup nusxasini serverdan tashqarida ham saqlash tavsiya etiladi.
 
 ### PUBG buyurtmasi
 

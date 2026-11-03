@@ -57,6 +57,8 @@ const orderSchema = new mongoose.Schema(
 );
 
 orderSchema.index({ status: 1, completedAt: -1 });
+orderSchema.index({ status: 1, paidAt: 1 });
+orderSchema.index({ provider: 1, status: 1, createdAt: 1 });
 orderSchema.index({ createdAt: -1 });
 
 export const Order = mongoose.model("Order", orderSchema);

@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { authenticate } from "../middleware/auth.js";
+import { createApiRateLimit } from "../middleware/apiRateLimit.js";
+import { env } from "../config/env.js";
 import orderRoutes from "./order.routes.js";
 import playerRoutes from "./player.routes.js";
 import productRoutes from "./product.routes.js";
@@ -10,6 +12,11 @@ import telegramRoutes from "./telegram.routes.js";
 
 const router = Router();
 router.use(authenticate);
+router.use(createApiRateLimit({
+  windowMs: env.apiRateLimitWindowMs,
+  maxRequests: env.userRateLimitMaxRequests,
+  keyGenerator: (req) => req.user.telegramId,
+}));
 router.use("/profile", profileRoutes);
 router.use("/products", productRoutes);
 router.use("/players", playerRoutes);
