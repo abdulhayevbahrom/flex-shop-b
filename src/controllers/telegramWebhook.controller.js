@@ -17,7 +17,7 @@ export async function handleTelegramWebhook(req, res) {
       { $set: { username: message.from.username ?? "", firstName: message.from.first_name ?? "", lastName: message.from.last_name ?? "", languageCode: message.from.language_code ?? "uz", hasStartedBot: true, botStartedAt: new Date() } },
       { upsert: true, setDefaultsOnInsert: true },
     );
-    await sendStartResponse(message.chat.id, await getBotEnabled(), message.from.first_name ?? "");
+    await sendStartResponse(message.chat.id, await getBotEnabled());
   }
   return successResponse(res, { received: true });
 }
