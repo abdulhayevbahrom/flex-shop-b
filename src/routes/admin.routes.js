@@ -5,7 +5,7 @@ import {
 } from "../controllers/admin.controller.js";
 import { getAdminSession, loginAdmin, loginAdminWithTelegram, logoutAdmin } from "../controllers/adminAuth.controller.js";
 import { createPackage, deletePackage, getProviderStatus, listPackages, listProviderPackages, updatePackage } from "../controllers/adminPackage.controller.js";
-import { getAdminOrder, getAdminStatistics, getBotStatus, listAdminOrders, updateBotStatus } from "../controllers/adminOperations.controller.js";
+import { getAdminOrder, getAdminStatistics, getAdminTopUp, getBotStatus, listAdminOrders, updateBotStatus } from "../controllers/adminOperations.controller.js";
 import { createPaymentCard, deletePaymentCard, listPaymentCards, updatePaymentCard } from "../controllers/adminPaymentCard.controller.js";
 import { adminAuth } from "../middleware/adminAuth.js";
 import { authenticate } from "../middleware/auth.js";
@@ -28,6 +28,7 @@ router.get("/bot", asyncHandler(getBotStatus));
 router.patch("/bot", asyncHandler(updateBotStatus));
 router.get("/orders", asyncHandler(listAdminOrders));
 router.get("/orders/:orderId", asyncHandler(getAdminOrder));
+router.get("/top-ups/:topUpId", asyncHandler(getAdminTopUp));
 router.get("/statistics", asyncHandler(getAdminStatistics));
 router.get("/payment-cards", asyncHandler(listPaymentCards));
 router.post("/payment-cards", asyncHandler(createPaymentCard));

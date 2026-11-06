@@ -1,5 +1,7 @@
 import mongoose from "mongoose";
 import { Order } from "../models/Order.js";
+import { TopUp } from "../models/TopUp.js";
+import { User } from "../models/User.js";
 import { getBotEnabled, setBotEnabled } from "../services/systemSettings.service.js";
 import { broadcastBotStarted } from "../services/telegramBot.service.js";
 import { AppError } from "../utils/AppError.js";
@@ -21,6 +23,7 @@ function monthRange(value) {
 
 function orderSummary(order) {
   return {
+    kind: "order",
     id: order.id, providerOrderId: order.providerOrderId,
     providerReferenceId: order.providerReferenceId, type: order.type,
     provider: order.provider,
@@ -35,6 +38,34 @@ function orderSummary(order) {
       username: order.user.username, firstName: order.user.firstName,
       lastName: order.user.lastName,
     } : null,
+  };
+}
+
+function topUpSummary(topUp) {
+  const defaultReason = topUp.status === "expired"
+    ? "To‘lov muddati tugagan"
+    : topUp.status === "rejected" ? "To‘lov rad etilgan" : "";
+  return {
+    kind: "balance_topup",
+    id: topUp.id,
+    status: topUp.status,
+    amountUzs: topUp.amountUzs,
+    requestedAmountUzs: topUp.requestedAmountUzs,
+    paymentCode: topUp.paymentCode,
+    method: topUp.method,
+    cardLabel: topUp.cardLabel,
+    cardNumber: topUp.cardNumber,
+    cardHolder: topUp.cardHolder,
+    createdAt: topUp.createdAt,
+    completedAt: topUp.completedAt,
+    expiresAt: topUp.expiresAt,
+    failureReason: topUp.failureReason || defaultReason,
+    user: topUp.user ? {
+      id: topUp.user.id, telegramId: topUp.user.telegramId,
+      username: topUp.user.username, firstName: topUp.user.firstName,
+      lastName: topUp.user.lastName,
+    } : null,
+    reviewedBy: topUp.reviewedBy ? { id: topUp.reviewedBy.id, username: topUp.reviewedBy.username } : null,
   };
 }
 
@@ -54,23 +85,48 @@ export async function listAdminOrders(req, res) {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
   const filter = {};
-  if (req.query.status) filter.status = req.query.status;
+  const kind = String(req.query.kind ?? "");
+  if (req.query.status && kind !== "balance_topup") filter.status = req.query.status;
   if (req.query.type) filter.type = req.query.type;
   const search = String(req.query.search ?? "").trim();
+  let matchingUserIds = [];
   if (search) {
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/^@/, "");
+    matchingUserIds = await User.find({ $or: [
+      { username: { $regex: escaped, $options: "i" } },
+      { firstName: { $regex: escaped, $options: "i" } },
+      { lastName: { $regex: escaped, $options: "i" } },
+      { telegramId: search },
+    ] }).distinct("_id");
     const clauses = [
-      { providerOrderId: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } },
+      { providerOrderId: { $regex: escaped, $options: "i" } },
       { "recipient.playerId": search },
-      { "recipient.telegramUsername": { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } },
+      { "recipient.telegramUsername": { $regex: escaped, $options: "i" } },
+      { user: { $in: matchingUserIds } },
     ];
     if (mongoose.isValidObjectId(search)) clauses.push({ _id: new mongoose.Types.ObjectId(search) });
     filter.$or = clauses;
   }
-  const [orders, total] = await Promise.all([
-    Order.find(filter).populate("user", "telegramId username firstName lastName").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
-    Order.countDocuments(filter),
+  const topUpFilter = { purpose: "balance" };
+  if (req.query.status && kind === "balance_topup") topUpFilter.status = req.query.status;
+  if (search) {
+    topUpFilter.$or = [{ user: { $in: matchingUserIds } }];
+    if (mongoose.isValidObjectId(search)) topUpFilter.$or.push({ _id: new mongoose.Types.ObjectId(search) });
+  }
+  const includeOrders = kind !== "balance_topup";
+  const includeTopUps = kind !== "order" && !req.query.type && (!req.query.status || kind === "balance_topup");
+  const fetchLimit = page * limit;
+  const [orders, topUps, orderTotal, topUpTotal] = await Promise.all([
+    includeOrders ? Order.find(filter).populate("user", "telegramId username firstName lastName").sort({ createdAt: -1 }).limit(fetchLimit) : [],
+    includeTopUps ? TopUp.find(topUpFilter).populate("user", "telegramId username firstName lastName").populate("reviewedBy", "username").sort({ createdAt: -1 }).limit(fetchLimit) : [],
+    includeOrders ? Order.countDocuments(filter) : 0,
+    includeTopUps ? TopUp.countDocuments(topUpFilter) : 0,
   ]);
-  return successResponse(res, { items: orders.map(orderSummary), total, page, pages: Math.ceil(total / limit) });
+  const items = [...orders.map(orderSummary), ...topUps.map(topUpSummary)]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice((page - 1) * limit, page * limit);
+  const total = orderTotal + topUpTotal;
+  return successResponse(res, { items, total, page, pages: Math.ceil(total / limit) });
 }
 
 export async function getAdminOrder(req, res) {
@@ -79,6 +135,14 @@ export async function getAdminOrder(req, res) {
     .populate("topUp");
   if (!order) throw new AppError("Zakaz topilmadi", 404, "ORDER_NOT_FOUND");
   return successResponse(res, { order: { ...orderSummary(order), topUp: order.topUp, providerPayload: order.providerPayload, refundedAt: order.refundedAt, paymentExpiresAt: order.paymentExpiresAt } });
+}
+
+export async function getAdminTopUp(req, res) {
+  const topUp = await TopUp.findOne({ _id: req.params.topUpId, purpose: "balance" })
+    .populate("user", "telegramId username firstName lastName balanceUzs isBlocked")
+    .populate("reviewedBy", "username");
+  if (!topUp) throw new AppError("Balans to‘ldirish topilmadi", 404, "TOPUP_NOT_FOUND");
+  return successResponse(res, { topUp: topUpSummary(topUp) });
 }
 
 export async function getAdminStatistics(req, res) {

@@ -17,7 +17,12 @@ export async function updateTopUpStatus(req, res) {
   const topUp = await TopUp.findOneAndUpdate(
     { _id: req.params.topUpId, status: { $in: ["pending", "reviewing"] } },
     {
-      $set: { status, completedAt: status === "completed" ? new Date() : null },
+      $set: {
+        status,
+        completedAt: status === "completed" ? new Date() : null,
+        failureReason: status === "rejected" ? String(req.body.reason ?? "Admin tomonidan rad etildi").trim() : "",
+        reviewedBy: req.admin._id,
+      },
       $unset: { activeAmountKey: 1 },
     },
     { returnDocument: "before" },

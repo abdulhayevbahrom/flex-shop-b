@@ -27,6 +27,8 @@ const topUpSchema = new mongoose.Schema(
     cardHolder: String,
     expiresAt: { type: Date, required: true },
     completedAt: Date,
+    failureReason: { type: String, trim: true, default: "" },
+    reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Admin" },
     matchedNotification: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "PaymentNotification",
