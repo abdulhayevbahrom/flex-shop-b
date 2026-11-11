@@ -16,20 +16,32 @@ export async function processHumoNotification({
   telegramDate,
 }) {
   const parsed = parseHumoMessage(text);
+  // Persist the raw event first. Matching can fail or be retried independently;
+  // the unique Telegram message key makes replay safe.
   let notification;
   try {
-    notification = await PaymentNotification.create({
-      telegramMessageId,
-      telegramChatId,
-      senderUsername,
-      direction: parsed.direction,
-      amountUzs: parsed.amountUzs,
-      text: parsed.text,
-      telegramDate,
-    });
+    notification = await PaymentNotification.findOneAndUpdate(
+      { telegramMessageId },
+      {
+        $setOnInsert: {
+          telegramMessageId,
+          telegramChatId,
+          senderUsername,
+          direction: parsed.direction,
+          amountUzs: parsed.amountUzs,
+          text: parsed.text,
+          telegramDate,
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true },
+    );
   } catch (error) {
-    if (error?.code === 11000) return { duplicate: true };
-    throw error;
+    if (error?.code !== 11000) throw error;
+    notification = await PaymentNotification.findOne({ telegramMessageId });
+    if (!notification) throw error;
+  }
+  if (notification.status === "matched" || notification.status === "ignored") {
+    return { duplicate: true, status: notification.status };
   }
 
   if (parsed.direction !== "credit" || !parsed.amountUzs) {
@@ -39,16 +51,40 @@ export async function processHumoNotification({
     return { ignored: true, notification };
   }
 
+  await PaymentNotification.updateOne(
+    { _id: notification._id, status: { $in: ["received", "unmatched", "error"] } },
+    { $set: { status: "received", reason: "" } },
+  );
+
   const session = await mongoose.startSession();
   let matchedTopUp = null;
   try {
     await session.withTransaction(async () => {
-      matchedTopUp = await TopUp.findOneAndUpdate(
+      const paymentAt = telegramDate ?? new Date();
+      const candidates = await TopUp.find({
+        amountUzs: parsed.amountUzs,
+        status: { $in: ["pending", "expired"] },
+        createdAt: { $lte: paymentAt },
+        // Accept late-delivered notifications when the bank timestamp proves
+        // the transfer happened during the payment window.
+        expiresAt: { $gt: paymentAt },
+      }).sort({ createdAt: -1 }).limit(2).session(session);
+
+      if (candidates.length > 1) {
+        await PaymentNotification.updateOne(
+          { _id: notification._id },
+          { $set: { status: "unmatched", reason: "Multiple eligible top-ups have this exact amount" } },
+          { session },
+        );
+        return;
+      }
+
+      matchedTopUp = candidates[0] ? await TopUp.findOneAndUpdate(
         {
-          amountUzs: parsed.amountUzs,
+          _id: candidates[0]._id,
           status: { $in: ["pending", "expired"] },
-          createdAt: { $lte: telegramDate ?? new Date() },
-          expiresAt: { $gt: telegramDate ?? new Date() },
+          createdAt: { $lte: paymentAt },
+          expiresAt: { $gt: paymentAt },
         },
         {
           $set: {
@@ -59,7 +95,7 @@ export async function processHumoNotification({
           $unset: { activeAmountKey: 1 },
         },
         { returnDocument: "before", session },
-      );
+      ) : null;
 
       if (!matchedTopUp) {
         await PaymentNotification.updateOne(
@@ -82,11 +118,17 @@ export async function processHumoNotification({
         const paidOrder = await Order.findOneAndUpdate(
           {
             _id: matchedTopUp.order,
-            status: "awaiting_payment",
-            paidAt: null,
+            $or: [
+              { status: "awaiting_payment", paidAt: null },
+              // The expiry worker can mark the order cancelled just before this
+              // notification is processed. The bank timestamp above proves
+              // payment was made before expiry, so restore it atomically.
+              { status: "cancelled", paidAt: null, paymentExpiresAt: { $gt: telegramDate ?? new Date() } },
+            ],
           },
           {
             $set: {
+              status: "awaiting_payment",
               paidAt: telegramDate ?? new Date(),
               paymentAmountUzs: matchedTopUp.amountUzs,
             },
@@ -138,5 +180,31 @@ export async function processHumoNotification({
 
   return matchedTopUp
     ? { matched: true, topUpId: matchedTopUp.id }
-    : { unmatched: true };
+    : { unmatched: true, notificationId: notification.id };
+}
+
+export async function retryUnmatchedHumoNotifications({ limit = 100 } = {}) {
+  const notifications = await PaymentNotification.find({
+    direction: "credit",
+    status: { $in: ["unmatched", "error"] },
+    amountUzs: { $gt: 0 },
+  }).sort({ telegramDate: 1 }).limit(limit);
+  const results = [];
+  for (const item of notifications) {
+    try {
+      results.push(await processHumoNotification({
+        telegramMessageId: item.telegramMessageId,
+        telegramChatId: item.telegramChatId,
+        senderUsername: item.senderUsername,
+        text: item.text,
+        telegramDate: item.telegramDate,
+      }));
+    } catch (error) {
+      console.error("Unmatched payment notification retry failed", {
+        notificationId: item.id,
+        error: error.message,
+      });
+    }
+  }
+  return results;
 }

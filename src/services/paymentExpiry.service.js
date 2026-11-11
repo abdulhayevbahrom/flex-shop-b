@@ -1,10 +1,14 @@
 import { Order } from "../models/Order.js";
 import { TopUp } from "../models/TopUp.js";
 import { fulfillPaidOrder } from "./orderFulfillment.service.js";
+import { retryUnmatchedHumoNotifications } from "./humoPayment.service.js";
 
 let timer;
 
 async function sweep() {
+  await retryUnmatchedHumoNotifications().catch((error) => {
+    console.error("Unmatched payment notification retry failed", error);
+  });
   const now = new Date();
   const expired = await TopUp.find({
     status: "pending",
