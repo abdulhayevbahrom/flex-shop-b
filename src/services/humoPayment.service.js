@@ -51,15 +51,19 @@ export async function processHumoNotification({
     return { ignored: true, notification };
   }
 
-  await PaymentNotification.updateOne(
-    { _id: notification._id, status: { $in: ["received", "unmatched", "error"] } },
-    { $set: { status: "received", reason: "" } },
-  );
-
   const session = await mongoose.startSession();
   let matchedTopUp = null;
   try {
     await session.withTransaction(async () => {
+      matchedTopUp = null;
+      // Claim the event in the same transaction as the balance change.
+      const claim = await PaymentNotification.updateOne(
+        { _id: notification._id, status: { $in: ["received", "unmatched", "error"] } },
+        { $set: { status: "received", reason: "" } },
+        { session },
+      );
+      if (!claim.matchedCount) return;
+
       const paymentAt = telegramDate ?? new Date();
       const candidates = await TopUp.find({
         amountUzs: parsed.amountUzs,
@@ -166,7 +170,7 @@ export async function processHumoNotification({
     });
   } catch (error) {
     await PaymentNotification.updateOne(
-      { _id: notification._id },
+      { _id: notification._id, status: { $in: ["received", "unmatched", "error"] } },
       { $set: { status: "error", reason: error.message } },
     );
     throw error;
